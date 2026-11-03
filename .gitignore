@@ -1,0 +1,8 @@
+# Ignore Python bytecode cache folders
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# macOS system files
+.DS_Store
