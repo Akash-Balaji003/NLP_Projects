@@ -6,3 +6,9 @@
 
 # macOS system files
 .DS_Store
+
+# Ignore virtual environment folder
+.venv/
+
+# Ignore data folder
+data/
