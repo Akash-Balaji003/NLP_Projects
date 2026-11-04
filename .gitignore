@@ -12,3 +12,4 @@
 
 # Ignore data folder
 data/
+.complete/
