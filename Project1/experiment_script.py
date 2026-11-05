@@ -241,8 +241,8 @@ class BagOfWords(Encoder):
         """Dimensionality of the representation space"""
         return self.length
 
-    def __call__(self, x: list) -> 'np.ndarray':
-        """X is a list of list of token ids"""
+    def __call__(self, x: list, **kwargs) -> 'np.ndarray':
+        """X is a list of token ids"""
         if self.Verbose:
             print(f"Encoding input: {x}")
         # A 0 vector with the same length as the vocabulary except in positions corresponding 
