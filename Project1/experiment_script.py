@@ -216,6 +216,42 @@ class TokenIndicator(Encoder):
             print(f"Final vector: {vector}")
         return vector
 
+
+class BagOfWords(Encoder):
+    """
+       BagOfWords creates a vector out of one text x. The vector has the dimension of the 
+       length of the vocabulary of the tokenizer. If one specific token appears in the text, 
+       then the position of this token is set to the number of occurances of this token in the text. 
+       -> information about count of occurance 
+       -> no information about ordering or relations
+
+    Args:
+        Encoder (_type_): _description_
+    """
+
+    def __init__(self, length: int, verbose: bool = False):
+        self.length = length
+        self.Verbose = verbose
+        
+    def __len__(self) -> int:
+        """Dimensionality of the representation space"""
+        return self.length
+
+    def __call__(self, x: list) -> 'np.ndarray':
+        """X is a list of list of token ids"""
+        if self.Verbose:
+            print(f"Encoding input: {x}")
+        # A 0 vector with the same length as the vocabulary except in positions corresponding 
+        # to tokens appearing in the document
+        vector = np.zeros(self.length)
+        for token_id in x:
+            vector[token_id] += 1
+        vector = vector.astype(int)  # Convert to integer type
+        if self.Verbose:
+            print(f"Final vector: {vector}")
+        return vector
+
+
 class LogisticRegressionClassifier(ProbabilisticModel):
     """
     Use scikit-learn LogisticRegression to implement a logistic regression classifier.
