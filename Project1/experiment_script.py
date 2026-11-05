@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Literal
+import os
 import tqdm
 from tokenizers import Tokenizer
 import numpy as np
@@ -150,7 +151,26 @@ class TextClassifier():
             metric_values += list(cv_scores)
         self.experiment_results = np.array(metric_values)
 
+        try:
+            self.save_experiment_results()
+        except Exception as e:
+            print(f"Failed to save experiment results: {e}")
+        
         return np.array(metric_values)
+
+    def save_experiment_results(self, filename:str|None=None):
+        # check if dir data exists, if not create it
+        if not os.path.exists("data"):
+            os.makedirs("data")
+        # save the experiment results as a csv file
+        if self.experiment_results is None:
+            raise ValueError("Experiment results are not available. Please run execute_experiment first.")
+        # save np array as csv file
+        # create filename with current timestamp
+        timestamp = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
+        if filename is None:
+            filename = "experiment_results_" + timestamp + ".csv"
+        np.savetxt(os.path.join("data", filename), self.experiment_results, delimiter=",")
 
     def get_experiment_results(self):
         if self.experiment_results is None:
