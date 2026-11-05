@@ -12,6 +12,8 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import cross_val_score
 
+from analysis import BenavoliCorrelatedT
+
 class Encoder(ABC):
     """
     Class to convert a string into a vector representation. The vector representation is a D-dimensional vector of real numbers. The dimensionality of the representation space is given by the __len__ method.
@@ -214,7 +216,6 @@ class TokenIndicator(Encoder):
             print(f"Final vector: {vector}")
         return vector
 
-
 class LogisticRegressionClassifier(ProbabilisticModel):
     """
     Use scikit-learn LogisticRegression to implement a logistic regression classifier.
@@ -278,5 +279,64 @@ class NeuralNetworkClassifier(ProbabilisticModel):
         scores = cross_val_score(self.model, X, y, cv=k, scoring=metric)
         return scores
 
+class ModelComparison:
+    """
+       A class to compare different model experiment results and
+       visualize the posterior distribution.
+    """
 
+    def __init__(self, experiment_results:dict)->None:
+        """
+        For Model Comparison, we do not want to rely on the common
+        student t-test, as this approach only considers the mean of the different groups,
+        hence it ignores the variance and has no measurement of uncertainty. 
+        Computing the posterior distribution of the experiment results for each model.
+        The dataset given is list of tuples (a1, b1), (a2, b2), ..., (an, bn) 
+        with the assumption that the data follows a multidimensional normal distribution.
+        - Covariance Matrix: rho * diag(sigama)
+        - prior distribution on the mean: student t
+        - uniform prior on sigam
 
+        P(mu, sigma | data) = P(data | mu, sigma) * P(mu, sigma) / P(data)
+        Compute the MAP estimate of the posterior - or maybe full bayesian approach
+        Args:
+            experiment_results (dict): {model_name: np.ndarray of shape (n*k, ) containing the measurements for each fold}
+        """
+        self.experiment_results = experiment_results
+
+    def visualize_results(self)->None:
+        if len(self.experiment_results) == 2:
+            posterior = BenavoliCorrelatedT(
+                np.random.randint(low=70, high=80, size=100)/100,
+                np.random.randint(low=40, high=60, size=100)/100,
+                names=["logistic-indicator-enc", "mlp-indicator-enc"]
+            )
+            p_a, p_tie, p_b = posterior.probs(0.005)
+            print(f"The ROPE (Region of Practical Equivalence) is set to 0.005, meaning that if the difference between the two models is less than 0.005, we consider them practically equivalent.")
+            print(f"A=logistic_indicator-enc B=mlp_indicator-enc: P(A wins)={p_a:.4f} P(Tie)={p_tie:.4f} P(B wins)={p_b:.4f} Effect Size={posterior.effect_size:.2f}")
+            _ = posterior.plot(0.005)
+
+        if len(self.experiment_results) > 2:
+            # In case of more than 2 models, we choose a simple workaround and
+            # compute the posterior for each pair of models.
+            all_posteriors = {}
+            for i, model_a in enumerate(self.experiment_results.keys()):
+                for j, model_b in enumerate(self.experiment_results.keys()):
+                    if i < j:
+                        posterior = BenavoliCorrelatedT(
+                            self.experiment_results[model_a],
+                            self.experiment_results[model_b],
+                            names=[model_a, model_b]
+                        )
+                        p_a, p_tie, p_b = posterior.probs(0.005)
+                        print(f"A={model_a} B={model_b}: P(A wins)={p_a:.4f} P(Tie)={p_tie:.4f} P(B wins)={p_b:.4f} Effect Size={posterior.effect_size:.2f}")
+                        all_posteriors[(model_a, model_b)] = posterior
+
+            # create a grid of subplots to visualize the posteriors 
+            # for each pair of models n rows and one column
+            num_model_comparisons = len(all_posteriors)
+            for i, (model_a, model_b) in enumerate(all_posteriors.keys()):
+                posterior = all_posteriors[(model_a, model_b)]
+                posterior.plot(0.005)
+            plt.show()
+                

@@ -36,5 +36,15 @@ def small_test():
     # plot the results
     classifier.visualize_results()
 
+def test_experiment_comparison():
+    a = np.random.randint(0, 10, size=(15))
+    b = np.random.randint(5, 10, size=(15))
+    c = np.random.randint(0, 5, size=(15))
+    from experiment_script import ModelComparison
+
+    example_dict = {"Random Model": a, "Logistic Regression": b, "Random Forest": c}
+    comparison = ModelComparison(example_dict)
+    comparison.visualize_results()
+
 if __name__ == "__main__":
-    small_test()
+    test_experiment_comparison()
