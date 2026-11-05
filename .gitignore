@@ -12,3 +12,5 @@
 
 # Ignore data folder
 data/
+
+debugging.py

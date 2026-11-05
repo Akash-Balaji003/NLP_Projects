@@ -21,3 +21,13 @@ dependencies = [
     "torch>=2.15.0",
     "tqdm>=4.70.1",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["Project1/test"]
+python_files = ["*_test.py"]
+python_functions = ["test_*"]
+pythonpath = ["Project1"]
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+]
