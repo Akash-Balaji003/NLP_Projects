@@ -8,7 +8,7 @@ def download_dataset():
         kagglehub.dataset_download("debarshichanda/goemotions", path=f"data/{end}.tsv", output_dir="./")
 
 
-def load_dataset():
+def my_load_dataset():
     """
     Load the three files from the data directory and combine them.
 
@@ -49,7 +49,7 @@ def load_dataset():
 
 
 if __name__ == "__main__":
-    dataset, emotions = load_dataset()
+    dataset, emotions = my_load_dataset()
     print(f"Dataset shape: {dataset.shape}")
     print("Occurence of each emotion in the dataset:")
     print(dataset["emotion"].value_counts().sort_index(key=lambda x: x.astype(int)))

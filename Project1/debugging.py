@@ -17,6 +17,8 @@ def small_test():
         'class2': [0, 0, 1, 0],
         'class3': [0, 0, 0, 1]
     }
+    # text class1 class2 class3
+    # blab  0       1     0 
     df = pd.DataFrame(data)
 
     # Instantiate the classes

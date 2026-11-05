@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Literal
-
+import tqdm
 from tokenizers import Tokenizer
 import numpy as np
 import pandas as pd
@@ -79,7 +79,8 @@ class TextClassifier():
 
         vec_list = []
         X = dataset['text'].tolist()
-        for text in X:
+
+        for text in tqdm.tqdm(X, desc="Preparing data"):
             if self.verbose:
                 print(f"Processing text: {text}")
             token_ids = self.tokenizer.encode(text).ids
@@ -95,7 +96,7 @@ class TextClassifier():
         encoded_data = np.array(vec_list)
 
         # convert one hot encoded labels into a single label column
-        y = dataset.drop(columns=['text']).idxmax(axis=1)
+        y = dataset["emotion"].astype(int)
 
         y = y.to_numpy()
         print(f"Encoded data shape: {encoded_data.shape}, Labels shape: {y.shape}")
@@ -134,7 +135,7 @@ class TextClassifier():
         metric_values = []
         X = self.prep_dataset[0]
         y = self.prep_dataset[1]
-        for n in range(number_of_runs):
+        for n in tqdm.tqdm(range(number_of_runs), desc="Running experiments"):
             assert isinstance(X, np.ndarray), "Encoded data should be a numpy array"
             random_indices = np.random.permutation(len(X))
             shuffled_data = X[random_indices]
@@ -251,7 +252,7 @@ class NeuralNetworkClassifier(ProbabilisticModel):
         ProbabilisticModel (_type_): _description_
     """
     def __init__(self,
-                  hidden_layer_sizes=(100,),
+                  hidden_layer_sizes=(128,),
                   activation:Literal["identity", "logistic", "tanh", "relu"]="relu",
                   solver:Literal["adam", "lbfgs", "sgd"]="adam",
                   max_iter=200):
