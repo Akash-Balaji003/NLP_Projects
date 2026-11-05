@@ -82,10 +82,10 @@ class TextClassifier():
         for text in X:
             if self.verbose:
                 print(f"Processing text: {text}")
-            token_ids = self.tokenizer.encode_batch(X)
+            token_ids = self.tokenizer.encode(text).ids
             if self.verbose:
                 print(f"Token ids: {token_ids}")
-            assert isinstance(token_ids, list), "tokenizer.encode_batch should return a list of token ids"
+            assert isinstance(token_ids, list), "tokenizer.encode should return a list of token ids"
             encoded_data = self.encoder(token_ids)
             if self.verbose:
                 print(f"Encoded data: {encoded_data}")
@@ -132,18 +132,18 @@ class TextClassifier():
         self.k = number_of_folds
         self.n = number_of_runs
         metric_values = []
+        X = self.prep_dataset[0]
+        y = self.prep_dataset[1]
         for n in range(number_of_runs):
-            X = self.prep_dataset[0]
-            y = self.prep_dataset[1]
             assert isinstance(X, np.ndarray), "Encoded data should be a numpy array"
             random_indices = np.random.permutation(len(X))
             shuffled_data = X[random_indices]
             shuffled_labels = y[random_indices]
             cv_scores = self.model.cross_validate(shuffled_data, shuffled_labels, k=number_of_folds, metric=metric)
-            metric_values.extend(cv_scores)
+            metric_values += list(cv_scores)
         self.experiment_results = np.array(metric_values)
 
-        return np.ndarray(metric_values)
+        return np.array(metric_values)
 
     def get_experiment_results(self):
         if self.experiment_results is None:

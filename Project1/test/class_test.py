@@ -21,7 +21,9 @@ def test_tokenizer():
     tokenizer = Tokenizer.from_pretrained("bert-base-cased")
     text = "Hello, how are you?"
     # get the token ids for the text
-    tokens = tokenizer.encode(text).tokens
+    tokens = tokenizer.encode(text).ids
+    print(f"One Example token is: {tokens[0]}")
+
     assert isinstance(tokens, list), "Tokens should be a list"
     assert len(tokens) > 0, "Tokens list should not be empty"
 
