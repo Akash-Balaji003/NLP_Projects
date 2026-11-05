@@ -6,6 +6,9 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+import torch
+from tokenizers import Tokenizer
+from transformers import AutoModel
 
 from sklearn.neural_network import MLPClassifier
 from sklearn.linear_model import LogisticRegression
@@ -32,7 +35,7 @@ class Encoder(ABC):
         raise NotImplementedError("Concrete implementations will be discussed later")
 
     @abstractmethod
-    def __call__(self, x: list) -> 'np.ndarray':
+    def __call__(self, x: list, **kwargs) -> 'np.ndarray':
         """Represent x as a D-dimensional vector of real numbers"""
         raise NotImplementedError("Concrete implementations will be discussed later")
 
@@ -85,11 +88,12 @@ class TextClassifier():
         for text in tqdm.tqdm(X, desc="Preparing data"):
             if self.verbose:
                 print(f"Processing text: {text}")
-            token_ids = self.tokenizer.encode(text).ids
+            encoding = self.tokenizer.encode(text)
+            token_ids = encoding.ids
             if self.verbose:
                 print(f"Token ids: {token_ids}")
             assert isinstance(token_ids, list), "tokenizer.encode should return a list of token ids"
-            encoded_data = self.encoder(token_ids)
+            encoded_data = self.encoder(token_ids, encoding=encoding)
             if self.verbose:
                 print(f"Encoded data: {encoded_data}")
             vec_list.append(encoded_data)
@@ -198,7 +202,7 @@ class TokenIndicator(Encoder):
         """Dimensionality of the representation space"""
         return self.length
 
-    def __call__(self, x: list) -> 'np.ndarray':
+    def __call__(self, x: list, **kwargs) -> 'np.ndarray':
         """X is a list of list of token ids"""
         if self.Verbose:
             print(f"Encoding input: {x}")
@@ -340,3 +344,33 @@ class ModelComparison:
                 posterior.plot(0.005)
             plt.show()
                 
+class Bert_Encoder(Encoder):
+
+    def __init__(self):
+        self.model = AutoModel.from_pretrained("bert-base-cased")
+        self.model.eval()
+
+    def __len__(self) -> int:
+        """Dimensionality of the representation space"""
+        return 768
+
+    def __call__(self, x: list, **kwargs) -> 'np.ndarray':
+        # convert the list of token ids into a tensor
+        assert isinstance(x, list), "Input x should be a list of token ids"
+        token_ids = torch.tensor(x).unsqueeze(0)  # shape (1, seq_len)
+        encoding = kwargs.get('encoding', None)  # allow passing a precomputed encoding
+        assert not encoding is None, "You must provide a precomputed encoding for the input text"
+
+
+        attention_mask = torch.tensor([encoding.attention_mask])
+
+        with torch.no_grad():
+            output = self.model(input_ids=token_ids, attention_mask=attention_mask)
+
+        token_vectors = output.last_hidden_state[0]
+        mask = attention_mask.unsqueeze(-1)
+        embedding = ((output.last_hidden_state * mask).sum(1) / mask.sum(1))[0]   # (768,)
+
+        # convert embedding to numpy array
+        embedding_np = embedding.numpy()
+        return embedding_np
