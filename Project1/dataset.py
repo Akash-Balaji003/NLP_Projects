@@ -46,10 +46,29 @@ def my_load_dataset():
 
     return dataset, emotions
 
+def create_corpus(dataset):
+    """
+    Create a corpus from the dataset and save it to a text file.
+
+    Args:
+        dataset (pd.DataFrame): The dataset as a pandas DataFrame.
+
+    Returns:
+        list: A list of strings, where each string is a text from the dataset.
+    """
+    if os.path.exists("data/corpus.txt"):
+        print("Corpus already exists")
+    else:
+        corpus = dataset["text"].tolist()
+        with open("data/corpus.txt", "w", encoding="utf-8") as f:
+            for text in corpus:
+                f.write(text + " ")
+
 
 
 if __name__ == "__main__":
     dataset, emotions = my_load_dataset()
+    create_corpus(dataset)
     print(f"Dataset shape: {dataset.shape}")
     print("Occurence of each emotion in the dataset:")
     print(dataset["emotion"].value_counts().sort_index(key=lambda x: x.astype(int)))

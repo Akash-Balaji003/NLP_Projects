@@ -281,7 +281,6 @@ class LogisticRegressionClassifier(ProbabilisticModel):
     def cross_validate(self, X: 'np.ndarray', y: 'np.ndarray', k:int, metric:Literal["accuracy", "f1", "roc_auc"]="accuracy"):
         if self.model is None:
             raise ValueError("Model has not been initialized.")
-        from sklearn.model_selection import cross_val_score
         scores = cross_val_score(self.model, X, y, cv=k, scoring=metric)
         return scores
 
@@ -380,7 +379,7 @@ class ModelComparison:
                 posterior.plot(0.005)
             plt.show()
                 
-class Bert_Encoder(Encoder):
+class BertEncoder(Encoder):
 
     def __init__(self):
         self.model = AutoModel.from_pretrained("bert-base-cased")
