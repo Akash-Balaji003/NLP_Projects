@@ -3,8 +3,8 @@ import pandas as pd
 
 from tokenizers import Tokenizer
 
-from experiment_script import Encoder, ProbabilisticModel, TextClassifier, LogisticRegressionClassifier, TokenIndicator
-
+from experiment_script import Encoder, ModelComparison, ProbabilisticModel, TextClassifier, LogisticRegressionClassifier, TokenIndicator, BagOfWords, Bert_Encoder, NeuralNetworkClassifier
+from dataset import my_load_dataset
 
 def small_test():
     """
@@ -46,5 +46,56 @@ def test_experiment_comparison():
     comparison = ModelComparison(example_dict)
     comparison.visualize_results()
 
+def test_logistic_regression_classifier():
+    data, info = my_load_dataset()
+    # choose only the first 100 rows for testing
+    data = data.head(300)
+    # use pretrained tokenizer
+    tokenizer = Tokenizer.from_pretrained("bert-base-cased")
+    identifier = TokenIndicator(length=tokenizer.get_vocab_size())
+    bow_encoder = BagOfWords(length=tokenizer.get_vocab_size())
+    bert_encoder = Bert_Encoder() 
+    encoders = [identifier, bow_encoder, bert_encoder]
+    model = LogisticRegressionClassifier()
+    results_dict = {}
+    encoder_names = ["TokenIndicator", "BagOfWords", "Bert_Encoder"]
+    for i, encoder in enumerate(encoders):
+        classifier = TextClassifier(tokenizer, encoder, model, data)
+        results = classifier.run_experiment(number_of_runs=3, number_of_folds=2)
+        print(f"Results for encoder {encoder.__class__.__name__}: {results}")
+        results_dict[encoder_names[i]] = results
+
+    # compare the results of the different encoders
+    assert isinstance(results_dict, dict), "Results should be a dictionary"
+    comparison = ModelComparison(experiment_results = results_dict)
+    comparison.visualize_results()
+
+def test_logistic_single_layer_MLP():
+    data, info = my_load_dataset()
+    # choose only the first 100 rows for testing
+    data = data.head(300)
+    # use pretrained tokenizer
+    tokenizer = Tokenizer.from_pretrained("bert-base-cased")
+    identifier = TokenIndicator(length=tokenizer.get_vocab_size())
+    bow_encoder = BagOfWords(length=tokenizer.get_vocab_size())
+    bert_encoder = Bert_Encoder() 
+    encoders = [identifier, bow_encoder, bert_encoder]
+    model = NeuralNetworkClassifier(activation="relu", solver="adam")
+    results_dict = {}
+    encoder_names = ["TokenIndicator", "BagOfWords", "Bert_Encoder"]
+    for i, encoder in enumerate(encoders):
+        classifier = TextClassifier(tokenizer, encoder, model, data)
+        results = classifier.run_experiment(number_of_runs=3, number_of_folds=2)
+        print(f"Results for encoder {encoder.__class__.__name__}: {results}")
+        results_dict[encoder_names[i]] = results
+
+    # compare the results of the different encoders
+    assert isinstance(results_dict, dict), "Results should be a dictionary"
+    comparison = ModelComparison(experiment_results = results_dict)
+    comparison.visualize_results()
+
+
+
+
 if __name__ == "__main__":
-    test_experiment_comparison()
+    test_logistic_single_layer_MLP()
