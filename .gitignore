@@ -18,3 +18,5 @@ logs/
 
 # Ignore models folder
 models/
+result_plots/
+*.pdf

@@ -14,7 +14,7 @@ from transformers import AutoModel
 from sklearn.neural_network import MLPClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
-from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import cross_val_score, cross_validate
 
 from analysis import BenavoliCorrelatedT
 
@@ -177,7 +177,7 @@ class TextClassifier():
             raise ValueError("Experiment results are not available. Please run execute_experiment first.")
         return self.experiment_results
 
-    def visualize_results(self):
+    def visualize_results(self, model_name):
         """
         Visualize the results of the experiment.
         Using a two subplots
@@ -192,11 +192,13 @@ class TextClassifier():
             raise ValueError("Experiment results are not available. Please run execute_experiment first.")
         # use seaborn to visualize the results
         fig, axes = plt.subplots(1, 2, figsize=(12, 6))
+        # add figure title
         sns.boxplot(data=self.experiment_results, ax=axes[0])
         sns.histplot(data=self.experiment_results, ax=axes[1])
         # set titles
         # set figure title
-        fig.suptitle(f'Experiment Results: {self.n} runs of {self.k}-fold cross-validation', fontsize=16)
+        fig.suptitle(f'Experiment Results: {self.n} runs of {self.k}-fold cross-validation for {model_name}', fontsize=16)
+        # set figure title
         axes[0].set_title(f'Boxplot of {self.metric_value} Values')
         axes[1].set_title(f'Histogram of {self.metric_value} Values')
         plt.show()
@@ -340,8 +342,37 @@ class NeuralNetworkClassifier(ProbabilisticModel):
     def cross_validate(self, X: 'np.ndarray', y: 'np.ndarray', k:int, metric:Literal["accuracy", "f1", "roc_auc"]="accuracy"):
         if self.model is None:
             raise ValueError("Model has not been initialized.")
-        scores = cross_val_score(self.model, X, y, cv=k, scoring=metric)
+        cv = cross_validate(self.model, X, y, cv=k, return_estimator=True, scoring=metric)
+        # scores = cross_val_score(self.model, X, y, cv=k, scoring=metric)
+        scores = cv['test_score']
+        self.loss_curve = [estimator.loss_curve_ for estimator in cv['estimator']]
+        self.validation_scores = [estimator.validation_scores_ for estimator in cv['estimator']]
         return scores
+
+    def show_loss_curves(self):
+        if not hasattr(self, 'loss_curve'):
+            raise ValueError("Loss curves are not available. Please run cross_validate first.")
+        plt.figure(figsize=(10, 6))
+        for i, loss in enumerate(self.loss_curve):
+            plt.plot(loss, label=f'Run {i+1}')
+        plt.title('Loss Curves for Each Run')
+        plt.xlabel('Epochs')
+        plt.ylabel('Loss')
+        plt.legend()
+        plt.show()
+
+    def show_accuracy_curves(self):
+        if not hasattr(self, 'loss_curve'):
+            raise ValueError("Accuracy curves are not available. Please run cross_validate first.")
+        plt.figure(figsize=(10, 6))
+        for i, acc in enumerate(self.validation_scores):
+            plt.plot(acc, label=f'Run {i+1}')
+        plt.title('Validation Accuracy Curves for Each Run')
+        plt.xlabel('Epochs')
+        plt.ylabel('Validation Accuracy')
+        plt.legend()
+        plt.show()
+        
 
 class ModelComparison:
     """
