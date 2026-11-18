@@ -58,7 +58,7 @@ class ProbabilisticModel(ABC):
         
 class TextClassifier():
 
-    def __init__(self, tokenizer:Tokenizer, encoder:Encoder, model:ProbabilisticModel, dataset:pd.DataFrame, verbose:bool=False):
+    def __init__(self, tokenizer:Tokenizer, encoder:Encoder, model:ProbabilisticModel, dataset:pd.DataFrame, filename:str, verbose:bool=False):
         """
 
         Args:
@@ -66,6 +66,8 @@ class TextClassifier():
             encoder (Encoder): gets the sequence of tokens and converts it into a vector representation
             model (ProbabilisticModel): convert the vector representation into a probability mass function
             dataset (pandas.DataFrame (column names: text, one hot encoded labels - 28 columns): GoEmotion
+            filename (str): filename to save the experiment results
+            verbose (bool, optional): If True, print debug information. Defaults to False.
         """
         self.tokenizer = tokenizer
         self.encoder = encoder
@@ -75,6 +77,7 @@ class TextClassifier():
         self.prep_dataset = self.prepare_data(dataset)
         self.experiment_results = None
         self.metric_values = None
+        self.filename = filename
 
     def prepare_data(self, dataset)-> tuple['np.ndarray', 'np.ndarray']:
         """
@@ -152,7 +155,7 @@ class TextClassifier():
         self.experiment_results = np.array(metric_values)
 
         try:
-            self.save_experiment_results()
+            self.save_experiment_results(self.filename)
         except Exception as e:
             print(f"Failed to save experiment results: {e}")
         
@@ -167,9 +170,6 @@ class TextClassifier():
             raise ValueError("Experiment results are not available. Please run execute_experiment first.")
         # save np array as csv file
         # create filename with current timestamp
-        timestamp = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
-        if filename is None:
-            filename = "experiment_results_" + timestamp + ".csv"
         np.savetxt(os.path.join("data", filename), self.experiment_results, delimiter=",")
 
     def get_experiment_results(self):
