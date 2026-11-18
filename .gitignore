@@ -16,3 +16,4 @@ data/
 .complete/
 
 result_plots/
+*.pdf
