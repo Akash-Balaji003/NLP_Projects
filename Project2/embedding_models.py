@@ -11,8 +11,10 @@ import numpy as np
 def load_fasttext_model():
     url = "https://dl.fbaipublicfiles.com/fasttext/vectors-crawl/cc.en.300.bin.gz"
 
-    compressed_file = "cc.en.300.bin.gz"
-    model_file = "cc.en.300.bin"
+    os.makedirs("models", exist_ok=True)
+
+    compressed_file = "models/cc.en.300.bin.gz"
+    model_file = "models/cc.en.300.bin"
 
     # Download model if necessary
     if not os.path.exists(compressed_file):
@@ -38,8 +40,10 @@ def load_fasttext_model():
 def load_glove_model():
     url = "https://huggingface.co/stanfordnlp/glove/resolve/main/glove.840B.300d.zip"
 
-    compressed_file = "glove.840B.300d.zip"
-    model_file = "glove.840B.300d.txt"
+    os.makedirs("models", exist_ok=True)
+
+    compressed_file = "models/glove.840B.300d.zip"
+    model_file = "models/glove.840B.300d.txt"
 
     # Download model if necessary
     if not os.path.exists(compressed_file):
@@ -73,3 +77,56 @@ def load_glove_model():
     print(f"Loaded {len(embeddings):,} word embeddings.")
 
     return embeddings
+
+
+if __name__ == "__main__":
+    emotions = [
+        "admiration",
+        "amusement",
+        "anger",
+        "annoyance",
+        "approval",
+        "caring",
+        "confusion",
+        "curiosity",
+        "desire",
+        "disappointment",
+        "disapproval",
+        "disgust",
+        "embarrassment",
+        "excitement",
+        "fear",
+        "gratitude",
+        "grief",
+        "joy",
+        "love",
+        "nervousness",
+        "optimism",
+        "pride",
+        "realization",
+        "relief",
+        "remorse",
+        "sadness",
+        "surprise",
+    ]
+    fasttext_model = load_fasttext_model()
+    glove_embeddings = load_glove_model()
+
+    # Example usage
+    for emotion in emotions:
+        fasttext_vector = fasttext_model.get_word_vector(emotion)
+        glove_vector = glove_embeddings.get(emotion)
+
+        # save the vectors to a file or use them for further processing
+        print(f"Emotion: {emotion}")
+        print(f"    FastText Vector: {fasttext_vector[:5]}...")
+        with open("fasttext_vectors.txt", "a") as f:
+            f.write(f"{fasttext_vector.tolist()}\n")
+        if glove_vector is not None:
+            print(f"    GloVe Vector: {glove_vector[:5]}...")
+            with open("glove_vectors.txt", "a") as f:
+                f.write(f"{glove_vector.tolist()}\n")
+        else:
+            print("GloVe Vector: Not found")
+            with open("glove_vectors.txt", "a") as f:
+                f.write("Not found\n")

@@ -13,6 +13,8 @@
 # Ignore data folder
 data/
 
-.complete/
+# Ignore logs folder
+logs/
 
-result_plots/
+# Ignore models folder
+models/

@@ -1,0 +1,33 @@
+Remove all with multiple classes (~9000)
+Remove all duplicates (~200)
+Remove all with neutral emotion (~16000)
+
+Final is 29240 samples:
+class count
+0     3367
+1     2045
+2     1261
+3     1805
+4     2362
+5      823
+6     1054
+7     1723
+8      497
+9      886
+10    1808
+11     632
+12     245
+13     610
+14     550
+15    2314
+16      47
+17    1045
+18    1730
+19     105
+20    1081
+21      66
+22     748
+23     103
+24     437
+25     998
+26     898
