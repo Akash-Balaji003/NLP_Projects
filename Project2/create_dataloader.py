@@ -2,6 +2,8 @@ import os
 import re
 import numpy as np
 import pandas as pd
+from Project2.dataset import my_load_dataset
+from Project2.embedding_models import FastTextEmbedder, GloveEmbedder
 import dask.dataframe as dd
 import torch
 import torch.nn as nn
@@ -90,3 +92,12 @@ class CreateDataLoaders:
                               shuffle=shuffle, num_workers=self.num_workers)
 
         return make("train", True), make("val", False), make("test", False), cache["weights"]
+
+
+if __name__ == "__main__":
+    my_glove_embedder = GloveEmbedder()
+    my_fasttext_embedder = FastTextEmbedder()
+    dataset, emotions = my_load_dataset()
+
+    my_dataloader_creator = CreateDataLoaders(dataset, emotions, word_embedder=my_glove_embedder)
+    train_loader, val_loader, test_loader, weights = my_dataloader_creator.create_dataloaders()

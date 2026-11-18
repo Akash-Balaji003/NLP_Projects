@@ -79,6 +79,30 @@ def load_glove_model():
     return embeddings
 
 
+class GloveEmbedder:
+    def __init__(self, kv):                 # gensim KeyedVectors
+        self.kv, self.dim = kv, kv.vector_size
+    def embed(self, word):
+        return self.kv[word] if word in self.kv else np.zeros(self.dim, np.float32)
+
+class FastTextEmbedder:
+    def __init__(self, ft_model):           # fasttext.load_model("cc.en.300.bin")
+        self.ft = ft_model
+    def embed(self, word):
+        return self.ft.get_word_vector(word)   # works for unseen words too:
+    def __init__(self, glove_embeddings):
+        self.glove_embeddings = glove_embeddings
+
+    def embed(self, word):
+        return self.glove_embeddings.get(word, np.zeros(300, dtype=np.float32))
+
+class FastTextEmbedder:
+    def __init__(self, fasttext_model):
+        self.fasttext_model = fasttext_model
+
+    def embed(self, word):
+        return self.fasttext_model.get_word_vector(word)
+
 if __name__ == "__main__":
     emotions = [
         "admiration",
