@@ -84,7 +84,11 @@ class GloveEmbedder:
         self.embedding = load_glove_model()
 
     def embed(self, word):
-        return self.embedding.get(word, np.zeros(300, dtype=np.float32))  # Return zero vector if word not found
+        # GloVe is cased inconsistently; try exact text first, then lowercase.
+        vector = self.embedding.get(word)
+        if vector is None:
+            vector = self.embedding.get(word.lower())
+        return vector if vector is not None else np.zeros(300, dtype=np.float32)
     
 
 
