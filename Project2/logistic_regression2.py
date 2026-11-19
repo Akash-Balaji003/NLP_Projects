@@ -80,7 +80,6 @@ class EmotionClassifier(L.LightningModule):
         loss = F.cross_entropy(logits, y)  # accepts probability targets
         acc = (logits.argmax(1) == y.argmax(1)).float().mean()
         # compute f1 score for each class and average them by size of the class (weighted average)
-        f1 = multiclass_f1_score(logits.argmax(1), y.argmax(1), num_classes=27, average="macro")
 
         self.log(
             f"{stage}_loss",
@@ -98,14 +97,16 @@ class EmotionClassifier(L.LightningModule):
             prog_bar=True,
             batch_size=ids.size(0),
         )
-        self.log(
-            f"{stage}_f1",
-            f1,
-            on_step=False,
-            on_epoch=True,
-            prog_bar=True,
-            batch_size=ids.size(0),
-        )
+        if stage == "test":
+            f1 = multiclass_f1_score(logits.argmax(1), y.argmax(1), num_classes=27, average="macro")
+            self.log(
+                f"{stage}_f1",
+                f1,
+                on_step=False,
+                on_epoch=True,
+                prog_bar=True,
+                batch_size=ids.size(0),
+            )
         return loss
 
     def training_step(self, batch, batch_idx):
