@@ -25,6 +25,7 @@ class EmotionClassifier(L.LightningModule):
         lstm_hidden=128,
         init_std=0.02,
         lr=1e-3,
+        weight_decay=0.0,
     ):
         super().__init__()
         self.save_hyperparameters(ignore=["weights"])  # logged to W&B automatically
