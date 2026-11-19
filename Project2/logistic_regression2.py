@@ -24,6 +24,7 @@ class EmotionClassifier(L.LightningModule):
         freeze_embedding=True,
         lstm_hidden=128,
         init_std=0.02,
+        lr=1e-3,
     ):
         super().__init__()
         self.save_hyperparameters(ignore=["weights"])  # logged to W&B automatically
@@ -37,6 +38,7 @@ class EmotionClassifier(L.LightningModule):
             self.lstm = nn.LSTM(dim, lstm_hidden, batch_first=True)
             dim = lstm_hidden
         self.fc = nn.Linear(dim, n_classes)
+
 
         self._init_weights(init_std)
 
