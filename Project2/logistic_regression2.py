@@ -40,7 +40,6 @@ class EmotionClassifier(L.LightningModule):
             dim = lstm_hidden
         self.fc = nn.Linear(dim, n_classes)
 
-
         self._init_weights(init_std)
 
     def _init_weights(self, std):
@@ -98,7 +97,9 @@ class EmotionClassifier(L.LightningModule):
             batch_size=ids.size(0),
         )
         if stage == "test":
-            f1 = multiclass_f1_score(logits.argmax(1), y.argmax(1), num_classes=27, average="macro")
+            f1 = multiclass_f1_score(
+                logits.argmax(1), y.argmax(1), num_classes=27, average="macro"
+            )
             self.log(
                 f"{stage}_f1",
                 f1,
@@ -231,16 +232,6 @@ def start_single_run(embedding="glove", pooling="mean", lr=1e-3, max_epochs=30):
         max_epochs=max_epochs,
     )
     trainer.test(model, test_loader)
-    # save the predictions for the test set to a CSV file
-    test_preds = []
-    for batch in test_loader:
-        ids, y = batch
-        logits = model(ids)
-        preds = logits.argmax(1).cpu().numpy()
-        test_preds.extend(preds)
-    test_df = dataset["test"].copy()
-    test_df["predicted_emotion"] = [emotions[i] for i in test_preds]
-    test_df.to_csv("test_predictions.csv", index=False)
     wandb.finish()
 
 
