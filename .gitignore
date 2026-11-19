@@ -20,3 +20,13 @@ logs/
 models/
 result_plots/
 *.pdf
+
+
+*.yaml
+/logs
+Project2/wandb/
+
+*.txt
+*.sh
+*.pt
+*ckpt
