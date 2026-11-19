@@ -1,5 +1,5 @@
 import argparse
-
+from torcheval.metrics.functional import multiclass_f1_score
 import lightning as L
 import torch
 import torch.nn.functional as F
@@ -76,6 +76,9 @@ class EmotionClassifier(L.LightningModule):
         logits = self(ids)
         loss = F.cross_entropy(logits, y)  # accepts probability targets
         acc = (logits.argmax(1) == y.argmax(1)).float().mean()
+        # compute f1 score for each class and average them by size of the class (weighted average)
+        f1 = multiclass_f1_score(logits.argmax(1), y.argmax(1), num_classes=27, average="macro")
+
         self.log(
             f"{stage}_loss",
             loss,
@@ -87,6 +90,14 @@ class EmotionClassifier(L.LightningModule):
         self.log(
             f"{stage}_acc",
             acc,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=True,
+            batch_size=ids.size(0),
+        )
+        self.log(
+            f"{stage}_f1",
+            f1,
             on_step=False,
             on_epoch=True,
             prog_bar=True,
@@ -174,7 +185,7 @@ def start_wandb_sweep(embedding="glove", pooling=None, lr=1e-3, max_epochs=30):
 
     def sweep_run():
         with wandb.init() as run:
-            logger = WandbLogger(experiment=run, offline=True)
+            logger = WandbLogger(experiment=run, offline=False)
             cfg = run.config
             train_model(
                 train_loader,
@@ -203,7 +214,7 @@ def start_single_run(embedding="glove", pooling="mean", lr=1e-3, max_epochs=30):
 
     # --- single run ---
     logger = WandbLogger(
-        project="goemotions", name=f"{embedding}-{pooling}-baseline", offline=True
+        project="goemotions", name=f"{embedding}-{pooling}-baseline", offline=False
     )
     model, trainer = train_model(
         train_loader,
