@@ -23,6 +23,7 @@ dependencies = [
     "tabulate>=0.10.0",
     "tokenizers>=0.23.3",
     "torch>=2.15.0",
+    "torcheval>=0.0.7",
     "tqdm>=4.70.1",
     "transformers>=5.22.1",
     "wandb>=0.31.0",

@@ -4,19 +4,13 @@ import lightning as L
 import torch
 import torch.nn.functional as F
 import wandb
+from create_dataloader2 import CreateDataLoaders
+from dataset import my_load_dataset
+from embedding_models import FastTextEmbedder, GloveEmbedder
 from lightning.pytorch.callbacks import EarlyStopping, LearningRateMonitor
 from lightning.pytorch.loggers import WandbLogger
 from torch import nn
 from torch.nn.utils.rnn import pack_padded_sequence
-
-try:
-    from .create_dataloader import CreateDataLoaders
-    from .dataset import my_load_dataset
-    from .embedding_models import FastTextEmbedder, GloveEmbedder
-except ImportError:
-    from create_dataloader import CreateDataLoaders
-    from dataset import my_load_dataset
-    from embedding_models import FastTextEmbedder, GloveEmbedder
 
 
 class EmotionClassifier(L.LightningModule):
@@ -26,12 +20,10 @@ class EmotionClassifier(L.LightningModule):
         self,
         weights,
         n_classes,
-        lr=1e-3,
         pooling="mean",
         freeze_embedding=True,
         lstm_hidden=128,
         init_std=0.02,
-        weight_decay=0.0,
     ):
         super().__init__()
         self.save_hyperparameters(ignore=["weights"])  # logged to W&B automatically
@@ -224,6 +216,16 @@ def start_single_run(embedding="glove", pooling="mean", lr=1e-3, max_epochs=30):
         max_epochs=max_epochs,
     )
     trainer.test(model, test_loader)
+    # save the predictions for the test set to a CSV file
+    test_preds = []
+    for batch in test_loader:
+        ids, y = batch
+        logits = model(ids)
+        preds = logits.argmax(1).cpu().numpy()
+        test_preds.extend(preds)
+    test_df = dataset["test"].copy()
+    test_df["predicted_emotion"] = [emotions[i] for i in test_preds]
+    test_df.to_csv("test_predictions.csv", index=False)
     wandb.finish()
 
 
