@@ -2475,6 +2475,10 @@ torch==2.15.0 \
     #   nlp-projects
     #   pytorch-lightning
     #   torchmetrics
+torcheval==0.0.7 \
+    --hash=sha256:20cc34dac7aa9b32f942c8a9f014d1d02098631b6cd0b102c078600577017956 \
+    --hash=sha256:a498dec34137bc66c9cf1adc7353a46c604dd62255884c72dcb4e2e4fc2cd7e9
+    # via nlp-projects
 torchmetrics==1.9.0 \
     --hash=sha256:a488609948600df52d3db4fcdab02e62aab2a85ef34da67037dc3e65b8512faa \
     --hash=sha256:bfdcbff3dd1d96b3374bb2496eb39f23c4b28b8a845b6a18c313688e0d2d9ca1
@@ -2607,6 +2611,7 @@ typing-extensions==4.16.0 \
     #   pydantic-core
     #   pytorch-lightning
     #   torch
+    #   torcheval
     #   typing-inspection
     #   wandb
 typing-inspection==0.4.5 \
