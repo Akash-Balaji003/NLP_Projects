@@ -1,5 +1,16 @@
 import matplotlib.pyplot as plt
 import pandas as pd
+from sklearn.linear_model import LogisticRegression
+
+
+def _f1_value(score):
+    return score[0] if isinstance(score, tuple) else score
+
+
+def _counts(scores):
+    return {
+        label: score[1] for label, score in scores.items() if isinstance(score, tuple)
+    }
 
 
 def per_class_f1(file):
@@ -20,9 +31,64 @@ def per_class_f1(file):
             if (precision + recall) > 0
             else 0
         )
-        f1_scores[label] = f1_score
+        f1_scores[label] = (f1_score, tp + fn)
+    return f1_scores
+
+
+def per_length_f1(file):
+    df = pd.read_csv(file)
+    # Columns are input_text, class_prediction, true_label
+    # Calculate F1 score for each input length
+    f1_scores = {}
+    # Group lengths inclusively: 0-10, 11-20, ..., 91-100.
+    text_lengths = df["input_text"].str.len()
+    for group_end in range(10, 181, 10):
+        group_start = 0 if group_end == 10 else group_end - 9
+        subset = df[(text_lengths >= group_start) & (text_lengths <= group_end)]
+        tp = len(
+            subset[
+                (subset["class_prediction"] == subset["true_label"])
+                & (subset["true_label"] != "")
+            ]
+        )
+        fp = len(
+            subset[
+                (subset["class_prediction"] != subset["true_label"])
+                & (subset["true_label"] != "")
+            ]
+        )
+        fn = len(
+            subset[
+                (subset["class_prediction"] != subset["true_label"])
+                & (subset["true_label"] != "")
+            ]
+        )
+
+        precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+        recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+
+        f1_score = (
+            2 * (precision * recall) / (precision + recall)
+            if (precision + recall) > 0
+            else 0
+        )
+        f1_scores[group_end] = (f1_score, tp + fn)
 
     return f1_scores
+
+
+def predict_correctness_by_length(file):
+
+    df = pd.read_csv(file)
+    lengths = df["input_text"].str.len().to_numpy().reshape(-1, 1)
+    correctness = (df["class_prediction"] == df["true_label"]).to_numpy()
+
+    model = LogisticRegression()
+    model.fit(lengths, correctness)
+    # evalute the model's accuracy
+    accuracy = model.score(lengths, correctness)
+
+    return accuracy
 
 
 def plot_per_class_f1(f1_scores, titles, filename):
@@ -55,35 +121,74 @@ def plot_per_class_f1(f1_scores, titles, filename):
         "sadness",
         "surprise",
     ]
-    plt.figure(figsize=(12, 6))
-    plt.xlabel("Classes")
-    plt.ylabel("F1 Score")
-    plt.xticks(rotation=90)
-    x = range(len(labels))
-    bar_width = 0.8 / len(f1_scores)
 
-    macro_f1s = []
-    for index, (f1, title) in enumerate(zip(f1_scores, titles)):
-        scores = list(f1.values())
-        macro_f1 = sum(scores) / len(scores)
-        macro_f1s.append(macro_f1)
-        offsets = [position + index * bar_width for position in x]
+    plt.figure(figsize=(8, 8))
+    count_scores = next(
+        (scores for scores in f1_scores if _counts(scores)),
+        {},
+    )
+    class_counts = _counts(count_scores)
+    heatmap = [[_f1_value(f1.get(label, 0)) for f1 in f1_scores] for label in labels]
+    image = plt.imshow(heatmap, vmin=0, vmax=1, aspect="auto")
+    plt.colorbar(image, label="F1 Score")
+    plt.ylabel("Classes")
+    titles = [
+        f"{title}\n(macro F1: {sum(_f1_value(score) for score in f1.values()) / len(f1):.2f})"
+        for f1, title in zip(f1_scores, titles)
+    ]
+    plt.xticks(range(len(titles)), titles)
+    plt.yticks(
+        range(len(labels)),
+        [f"{label} (n={class_counts.get(label, 0)})" for label in labels],
+    )
+
+    for row_index, row in enumerate(heatmap):
+        for column_index, score in enumerate(row):
+            plt.text(
+                column_index,
+                row_index,
+                f"{score:.2f}",
+                ha="center",
+                va="center",
+            )
+
+    plt.title("Per-Class F1 Scores")
+    plt.savefig(filename, bbox_inches="tight")
+    plt.show()
+
+
+def plot_per_length_f1(f1_scores, titles, macros, filename):
+    plt.figure(figsize=(8, 6))
+    group_ends = list(range(10, 181, 10))
+    bar_width = 0.8 / len(f1_scores)
+    positions = range(len(group_ends))
+    for index, (scores, title, macro) in enumerate(zip(f1_scores, titles, macros)):
+        offsets = [position + index * bar_width for position in positions]
         plt.bar(
             offsets,
-            scores,
+            [_f1_value(scores.get(group_end, 0)) for group_end in group_ends],
             width=bar_width,
-            label=f"{title} (Macro F1: {macro_f1:.2f})",
+            label=f"{title} (macro F1: {macro:.2f})",
         )
 
+    plt.xlabel("Input length")
+    plt.ylabel("F1 Score")
+    length_counts = _counts(f1_scores[0])
     plt.xticks(
-        [position + (len(f1_scores) - 1) * bar_width / 2 for position in x],
-        labels,
+        [position + bar_width * (len(f1_scores) - 1) / 2 for position in positions],
+        [
+            f"{0 if group_end == 10 else group_end - 9}-{group_end} "
+            f"\n(n={length_counts.get(group_end, 0)})"
+            for group_end in group_ends
+        ],
+        size=8,
         rotation=90,
     )
-    plt.title("Per-Class F1 Scores")
-    plt.legend()
     plt.ylim(0, 1)
-    plt.savefig(filename, bbox_inches="tight")
+    plt.grid(axis="y", alpha=0.3)
+    plt.legend()
+    plt.title("F1 Scores by Input Length")
+    plt.savefig(filename)
     plt.show()
 
 
@@ -120,9 +225,37 @@ if __name__ == "__main__":
     }
     # Read the CSV files and calculate F1 scores
     glove_sum = per_class_f1("glove_sum.csv")
+    glove_sum_length = per_length_f1("glove_sum.csv")
+    glove_lstm = per_class_f1("glove_lstm.csv")
+    glove_lstm_length = per_length_f1("glove_lstm.csv")
+    macro_f1_baseline = sum(baseline.values()) / len(baseline)
+    macro_f1_glove_sum = sum(_f1_value(score) for score in glove_sum.values()) / len(
+        glove_sum
+    )
+    macro_f1_glove_lstm = sum(_f1_value(score) for score in glove_lstm.values()) / len(
+        glove_lstm
+    )
+
+    print(f"Macro F1 (Baseline): {macro_f1_baseline:.2f}")
+    print(f"Macro F1 (GloVe Sum): {macro_f1_glove_sum:.2f}")
+    print(f"Macro F1 (GloVe LSTM): {macro_f1_glove_lstm:.2f}")
+
+    glove_sum_accuracy = predict_correctness_by_length("glove_sum.csv")
+    glove_lstm_accuracy = predict_correctness_by_length("glove_lstm.csv")
+
+    print("Prediction accuracy based on input length:")
+    print(f"Accuracy (GloVe Sum): {glove_sum_accuracy:.2f}")
+    print(f"Accuracy (GloVe LSTM): {glove_lstm_accuracy:.2f}")
 
     plot_per_class_f1(
-        [baseline, glove_sum],
-        ["Baseline", "GloVe Sum"],
-        "f1.png",
+        [baseline, glove_sum, glove_lstm],
+        ["Baseline", "GloVe Sum", "GloVe LSTM"],
+        "f1_per_class.png",
+    )
+
+    plot_per_length_f1(
+        [glove_sum_length, glove_lstm_length],
+        ["GloVe Sum", "GloVe LSTM"],
+        [macro_f1_glove_sum, macro_f1_glove_lstm],
+        "f1_per_length.png",
     )
