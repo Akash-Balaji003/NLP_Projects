@@ -191,6 +191,8 @@ def start_wandb_sweep(embedding="glove", pooling=None, lr=1e-3, max_epochs=30):
             "pooling": pooling_parameters,
             "dropout": {"distribution": "uniform", "min": 0.0, "max": 0.5},
             "init_std": {"distribution": "uniform", "min": 0.01, "max": 0.1},
+            "weight_decay": {"distribution": "log_uniform_values", "min": 1e-6, "max": 1e-2},
+            "lstm_hidden": {"distribution": "int_uniform", "min": 64, "max": 128},
         },
     }
 
@@ -207,6 +209,8 @@ def start_wandb_sweep(embedding="glove", pooling=None, lr=1e-3, max_epochs=30):
                 lr=cfg.lr,
                 pooling=cfg.pooling,
                 max_epochs=max_epochs,
+                weight_decay = cfg.weight_decay,
+                lstm_hidden = cfg.lstm_hidden,
                 dropout = cfg.dropout,
                 init_std = cfg.init_std
             )
