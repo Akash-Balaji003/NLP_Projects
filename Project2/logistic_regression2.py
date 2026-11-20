@@ -29,6 +29,7 @@ class EmotionClassifier(L.LightningModule):
         init_std=0.02,
         lr=1e-3,
         weight_decay=0.0,
+        dropout=0.1,
     ):
         super().__init__()
         self.save_hyperparameters(ignore=["weights"])  # logged to W&B automatically
@@ -43,6 +44,7 @@ class EmotionClassifier(L.LightningModule):
             dim = lstm_hidden
         self.fc = nn.Linear(dim, n_classes)
 
+        self.dropout = nn.Dropout(dropout)
         self._init_weights(init_std)
 
     def _init_weights(self, std):
@@ -69,8 +71,10 @@ class EmotionClassifier(L.LightningModule):
             packed = pack_padded_sequence(
                 x, lengths.clamp(min=1).cpu(), batch_first=True, enforce_sorted=False
             )
+            # add dropout to the LSTM output
             _, (hn, _) = self.lstm(packed)
             h = hn[-1]  # last hidden state, (batch, hidden)
+            h = self.dropout(h)
         else:
             raise ValueError(f"unknown pooling: {self.hparams.pooling}")
 
@@ -212,7 +216,7 @@ def start_wandb_sweep(embedding="glove", pooling=None, lr=1e-3, max_epochs=30):
 
     # --- sweep over the initial learning rate ---
     pooling_parameters = {
-        "values": ["sum", "mean", "lstm"] if pooling is None else [pooling]
+        "values": ["lstm"] if pooling is None else [pooling]
     }
     sweep_config = {
         "method": "bayes",
@@ -220,6 +224,10 @@ def start_wandb_sweep(embedding="glove", pooling=None, lr=1e-3, max_epochs=30):
         "parameters": {
             "lr": {"distribution": "log_uniform_values", "min": 1e-4, "max": 1e-1},
             "pooling": pooling_parameters,
+            "dropout": {"distribution": "uniform", "min": 0.0, "max": 0.5},
+            "init_std": {"distribution": "uniform", "min": 0.01, "max": 0.1},
+            "weight_decay": {"distribution": "log_uniform_values", "min": 1e-6, "max": 1e-2},
+            "lstm_hidden": {"distribution": "int_uniform", "min": 64, "max": 128},
         },
     }
 
@@ -227,7 +235,7 @@ def start_wandb_sweep(embedding="glove", pooling=None, lr=1e-3, max_epochs=30):
         with wandb.init() as run:
             logger = WandbLogger(experiment=run, offline=False)
             cfg = run.config
-            train_model(
+            model, trainer = train_model(
                 train_loader,
                 val_loader,
                 weights,
@@ -236,7 +244,12 @@ def start_wandb_sweep(embedding="glove", pooling=None, lr=1e-3, max_epochs=30):
                 lr=cfg.lr,
                 pooling=cfg.pooling,
                 max_epochs=max_epochs,
+                weight_decay = cfg.weight_decay,
+                lstm_hidden = cfg.lstm_hidden,
+                dropout = cfg.dropout,
+                init_std = cfg.init_std
             )
+            trainer.test(model, test_loader)
 
     sweep_id = wandb.sweep(sweep_config, project="goemotions")
     wandb.agent(sweep_id, function=sweep_run, count=20)
