@@ -215,9 +215,7 @@ def start_wandb_sweep(embedding="glove", pooling=None, lr=1e-3, max_epochs=30):
     n_classes = len(emotions)
 
     # --- sweep over the initial learning rate ---
-    pooling_parameters = {
-        "values": ["lstm"] if pooling is None else [pooling]
-    }
+    pooling_parameters = {"values": ["lstm"] if pooling is None else [pooling]}
     sweep_config = {
         "method": "bayes",
         "metric": {"name": "val_loss", "goal": "minimize"},
@@ -226,7 +224,11 @@ def start_wandb_sweep(embedding="glove", pooling=None, lr=1e-3, max_epochs=30):
             "pooling": pooling_parameters,
             "dropout": {"distribution": "uniform", "min": 0.0, "max": 0.5},
             "init_std": {"distribution": "uniform", "min": 0.01, "max": 0.1},
-            "weight_decay": {"distribution": "log_uniform_values", "min": 1e-6, "max": 1e-2},
+            "weight_decay": {
+                "distribution": "log_uniform_values",
+                "min": 1e-6,
+                "max": 1e-2,
+            },
             "lstm_hidden": {"distribution": "int_uniform", "min": 64, "max": 128},
         },
     }
@@ -244,10 +246,10 @@ def start_wandb_sweep(embedding="glove", pooling=None, lr=1e-3, max_epochs=30):
                 lr=cfg.lr,
                 pooling=cfg.pooling,
                 max_epochs=max_epochs,
-                weight_decay = cfg.weight_decay,
-                lstm_hidden = cfg.lstm_hidden,
-                dropout = cfg.dropout,
-                init_std = cfg.init_std
+                weight_decay=cfg.weight_decay,
+                lstm_hidden=cfg.lstm_hidden,
+                dropout=cfg.dropout,
+                init_std=cfg.init_std,
             )
             trainer.test(model, test_loader)
 
@@ -255,7 +257,16 @@ def start_wandb_sweep(embedding="glove", pooling=None, lr=1e-3, max_epochs=30):
     wandb.agent(sweep_id, function=sweep_run, count=20)
 
 
-def start_single_run(embedding="glove", pooling="mean", lr=1e-3, max_epochs=30):
+def start_single_run(
+    embedding="glove",
+    pooling="mean",
+    lr=1e-3,
+    max_epochs=30,
+    weight_decay=0.0,
+    lstm_hidden=128,
+    dropout=0.1,
+    init_std=0.1,
+):
     dataset, emotions = my_load_dataset()
     train_loader, val_loader, test_loader, weights = CreateDataLoaders(
         dataset,
@@ -278,6 +289,10 @@ def start_single_run(embedding="glove", pooling="mean", lr=1e-3, max_epochs=30):
         lr=lr,
         pooling=pooling,
         max_epochs=max_epochs,
+        weight_decay=weight_decay,
+        lstm_hidden=lstm_hidden,
+        dropout=dropout,
+        init_std=init_std,
     )
     trainer.test(model, test_loader)
     save_test_predictions(
@@ -298,6 +313,10 @@ if __name__ == "__main__":
     parser.add_argument("--mode", choices=["single", "sweep"], default="single")
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--epochs", type=int, default=30)
+    parser.add_argument("--weight_decay", type=float, default=0.0)
+    parser.add_argument("--lstm_hidden", type=int, default=128)
+    parser.add_argument("--dropout", type=float, default=0.1)
+    parser.add_argument("--init_std", type=float, default=0.1)
     args = parser.parse_args()
 
     if args.mode == "sweep":
@@ -313,4 +332,8 @@ if __name__ == "__main__":
             pooling="mean" if args.pooling == "all" else args.pooling,
             lr=args.lr,
             max_epochs=args.epochs,
+            weight_decay=args.weight_decay,
+            lstm_hidden=args.lstm_hidden,
+            dropout=args.dropout,
+            init_std=args.init_std,
         )
