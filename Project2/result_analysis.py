@@ -77,8 +77,21 @@ def per_length_f1(file):
     return f1_scores
 
 
-def predict_correctness_by_length(file):
+def predict_correctness_by_class(file):
+    df = pd.read_csv(file)
+    # make classes ints
+    classes = pd.get_dummies(df["true_label"]).to_numpy()
+    correctness = (df["class_prediction"] == df["true_label"]).to_numpy()
 
+    model = LogisticRegression()
+    model.fit(classes, correctness)
+    # evalute the model's accuracy
+    accuracy = model.score(classes, correctness)
+
+    return accuracy
+
+
+def predict_correctness_by_length(file):
     df = pd.read_csv(file)
     lengths = df["input_text"].str.len().to_numpy().reshape(-1, 1)
     correctness = (df["class_prediction"] == df["true_label"]).to_numpy()
@@ -240,12 +253,19 @@ if __name__ == "__main__":
     print(f"Macro F1 (GloVe Sum): {macro_f1_glove_sum:.2f}")
     print(f"Macro F1 (GloVe LSTM): {macro_f1_glove_lstm:.2f}")
 
-    glove_sum_accuracy = predict_correctness_by_length("glove_sum.csv")
-    glove_lstm_accuracy = predict_correctness_by_length("glove_lstm.csv")
+    glove_sum_class_accuracy = predict_correctness_by_class("glove_sum.csv")
+    glove_lstm_class_accuracy = predict_correctness_by_class("glove_lstm.csv")
+
+    print("Prediction accuracy based on class:")
+    print(f"Accuracy (GloVe Sum): {glove_sum_class_accuracy:.2f}")
+    print(f"Accuracy (GloVe LSTM): {glove_lstm_class_accuracy:.2f}")
+
+    glove_sum_length_accuracy = predict_correctness_by_length("glove_sum.csv")
+    glove_lstm_length_accuracy = predict_correctness_by_length("glove_lstm.csv")
 
     print("Prediction accuracy based on input length:")
-    print(f"Accuracy (GloVe Sum): {glove_sum_accuracy:.2f}")
-    print(f"Accuracy (GloVe LSTM): {glove_lstm_accuracy:.2f}")
+    print(f"Accuracy (GloVe Sum): {glove_sum_length_accuracy:.2f}")
+    print(f"Accuracy (GloVe LSTM): {glove_lstm_length_accuracy:.2f}")
 
     plot_per_class_f1(
         [baseline, glove_sum, glove_lstm],

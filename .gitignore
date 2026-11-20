@@ -30,3 +30,4 @@ Project2/wandb/
 *.sh
 *.pt
 *ckpt
+*.csv
