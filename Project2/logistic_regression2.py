@@ -1,6 +1,8 @@
 import argparse
-from torcheval.metrics.functional import multiclass_f1_score
+from pathlib import Path
+
 import lightning as L
+import pandas as pd
 import torch
 import torch.nn.functional as F
 import wandb
@@ -11,6 +13,7 @@ from lightning.pytorch.callbacks import EarlyStopping, LearningRateMonitor
 from lightning.pytorch.loggers import WandbLogger
 from torch import nn
 from torch.nn.utils.rnn import pack_padded_sequence
+from torcheval.metrics.functional import multiclass_f1_score
 
 
 class EmotionClassifier(L.LightningModule):
@@ -74,7 +77,7 @@ class EmotionClassifier(L.LightningModule):
         return self.fc(h)  # logits
 
     def _step(self, batch, stage):
-        ids, y = batch  # y: one-hot float (batch, n_classes)
+        ids, y = batch[:2]  # y: one-hot float (batch, n_classes)
         logits = self(ids)
         loss = F.cross_entropy(logits, y)  # accepts probability targets
         acc = (logits.argmax(1) == y.argmax(1)).float().mean()
@@ -165,6 +168,38 @@ def create_embedder(name):
     raise ValueError(f"Unknown embedding model: {name}")
 
 
+def save_test_predictions(model, test_loader, emotions, output_path):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = model.to(device)
+    model.eval()
+
+    input_text = []
+    predicted_indices = []
+    true_indices = []
+    with torch.no_grad():
+        for ids, labels, texts in test_loader:
+            ids = ids.to(device)
+            logits = model(ids)
+            input_text.extend(texts)
+            predicted_indices.extend(logits.argmax(dim=1).cpu().tolist())
+            true_indices.extend(labels.argmax(dim=1).cpu().tolist())
+
+    if not (len(input_text) == len(predicted_indices) == len(true_indices)):
+        raise RuntimeError("Test text and label/prediction counts do not match")
+
+    predictions = pd.DataFrame(
+        {
+            "input_text": input_text,
+            "class_prediction": [emotions[index] for index in predicted_indices],
+            "true_label": [emotions[index] for index in true_indices],
+        }
+    )
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    predictions.to_csv(output_path, index=False)
+    print(f"Saved {len(predictions)} test predictions to {output_path.resolve()}")
+
+
 def start_wandb_sweep(embedding="glove", pooling=None, lr=1e-3, max_epochs=30):
     dataset, emotions = my_load_dataset()
     train_loader, val_loader, test_loader, weights = CreateDataLoaders(
@@ -232,6 +267,12 @@ def start_single_run(embedding="glove", pooling="mean", lr=1e-3, max_epochs=30):
         max_epochs=max_epochs,
     )
     trainer.test(model, test_loader)
+    save_test_predictions(
+        model,
+        test_loader,
+        emotions,
+        output_path=f"test_predictions_{embedding}_{pooling}.csv",
+    )
     wandb.finish()
 
 

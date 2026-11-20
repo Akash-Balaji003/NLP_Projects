@@ -6,11 +6,24 @@ import torch
 import torch.nn.functional as F
 from dataset import my_load_dataset
 from embedding_models import FastTextEmbedder, GloveEmbedder
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import DataLoader, Dataset, TensorDataset
 
 PAD, UNK = 0, 1
 EMBEDDING_DIM = 300
-CACHE_FORMAT_VERSION = 2
+CACHE_FORMAT_VERSION = 3
+
+
+class TextTensorDataset(Dataset):
+    def __init__(self, ids, labels, texts):
+        self.ids = ids
+        self.labels = labels
+        self.texts = texts
+
+    def __len__(self):
+        return len(self.ids)
+
+    def __getitem__(self, index):
+        return self.ids[index], self.labels[index], self.texts[index]
 
 
 class CreateDataLoaders:
@@ -103,15 +116,20 @@ class CreateDataLoaders:
         y = F.one_hot(y_idx, num_classes=len(self.emotions)).float()
         return X, y, weights
 
-    def _split(self, X, y):
+    def _split(self, X, y, texts):
         g = torch.Generator().manual_seed(self.seed)
         perm = torch.randperm(len(X), generator=g)
         X, y = X[perm], y[perm]
+        permuted_texts = [texts[index] for index in perm.tolist()]
         n_tr, n_val = int(0.8 * len(X)), int(0.1 * len(X))
         return {
             "train": (X[:n_tr], y[:n_tr]),
             "val": (X[n_tr : n_tr + n_val], y[n_tr : n_tr + n_val]),
-            "test": (X[n_tr + n_val :], y[n_tr + n_val :]),
+            "test": (
+                X[n_tr + n_val :],
+                y[n_tr + n_val :],
+                permuted_texts[n_tr + n_val :],
+            ),
         }
 
     def create_dataloaders(self):
@@ -135,12 +153,22 @@ class CreateDataLoaders:
 
         if cache is None:
             X, y, weights = self._build_tensors()
-            cache = {"splits": self._split(X, y), "weights": weights}
+            texts = self.dataset["text"].tolist()
+            cache = {"splits": self._split(X, y, texts), "weights": weights}
             cache.update(metadata)
             torch.save(cache, self.cache_path)
 
         def make(name, shuffle):
-            X, y = cache["splits"][name]
+            split = cache["splits"][name]
+            X, y = split[:2]
+            if name == "test":
+                texts = split[2]
+                return DataLoader(
+                    TextTensorDataset(X, y, texts),
+                    batch_size=self.batch_size,
+                    shuffle=shuffle,
+                    num_workers=self.num_workers,
+                )
             return DataLoader(
                 TensorDataset(X, y),
                 batch_size=self.batch_size,
